@@ -61,14 +61,14 @@ PM10_TABLE = [
 PM10_TABLE.reverse()
 
 class Decoder(object):
-  def __init__(self, device):
+  def __init__(self, device, callback):
     self.buffer = bytes()
     self.device = device
-
+    self.callback = callback
 
   def read_pump(self):
     while True:
-      self.buffer = self.buffer + device.read()
+      self.buffer = self.buffer + self.device.read()
       while len(self.buffer) >= FRAME_SIZE:
         # print('buffer: %s' % list(self.buffer))
         read_again = self.find_frame()
@@ -126,8 +126,21 @@ class Decoder(object):
     now = datetime.datetime.now()
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    print('%s: PM2.5:%0.1f PM10:%0.1f AQI: %u, %u(PM2.5 %s), %u(PM10 %s)' % (now_str, pm2p5, pm10, max_aqi, pm2p5_aqi, pm2p5_desc, pm10_aqi, pm10_desc))
+    desc = 'PM2.5:%0.1f PM10:%0.1f AQI: %u, %u(PM2.5 %s), %u(PM10 %s)' % (pm2p5, pm10, max_aqi, pm2p5_aqi, pm2p5_desc, pm10_aqi, pm10_desc)
+    print('%s: %s' % (now_str, desc))
 
-with serial.Serial('/dev/ttyUSB1', 9600, timeout=1) as device:
-  d = Decoder(device)
-  d.read_pump()
+    params = {
+      'AQI': max_aqi,
+      'PM2.5': pm2p5,
+      'PM2.5 AQI': pm2p5_aqi,
+      'PM2.5 Description': pm2p5_desc,
+      'PM10': pm10,
+      'PM10 AQI': pm10_aqi,
+      'PM10 Description': pm10_desc,
+    }
+    self.callback(params, desc)
+
+if __name__ == "__main__":
+  with serial.Serial('/dev/ttyUSB1', 9600, timeout=1) as device:
+    d = Decoder(device)
+    d.read_pump()
