@@ -68,7 +68,7 @@ class Decoder(object):
 
   def read_pump(self):
     while True:
-      self.buffer = self.buffer + device.read()
+      self.buffer = self.buffer + self.device.read()
       while len(self.buffer) >= FRAME_SIZE:
         # print('buffer: %s' % list(self.buffer))
         read_again = self.find_frame()
@@ -126,8 +126,8 @@ class Decoder(object):
     now = datetime.datetime.now()
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    desc = 'PM2.5:%0.1f PM10:%0.1f AQI: %u, %u(PM2.5 %s), %u(PM10 %s)' % (now_str, pm2p5, pm10, max_aqi, pm2p5_aqi, pm2p5_desc, pm10_aqi, pm10_desc)
-    print('%s: %s' % desc)
+    desc = 'PM2.5:%0.1f PM10:%0.1f AQI: %u, %u(PM2.5 %s), %u(PM10 %s)' % (pm2p5, pm10, max_aqi, pm2p5_aqi, pm2p5_desc, pm10_aqi, pm10_desc)
+    print('%s: %s' % (now_str, desc))
 
     params = {
       'AQI': max_aqi,
