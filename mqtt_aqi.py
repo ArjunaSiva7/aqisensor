@@ -1,7 +1,9 @@
 import asyncio
+import argparse
 import logging
 import threading
 import serial
+import sys
 
 import aqi
 
@@ -11,8 +13,8 @@ from hbmqtt.mqtt.constants import QOS_1, QOS_2
 DEFAULT_BROKER='mqtt://127.0.0.1'
 DEFAULT_ROOM='Default'
 
-def run_decoder_pump(loop, mqtt_client, topic_room):
-  with serial.Serial('/dev/ttyUSB0', 9600, timeout=1) as device:
+def run_decoder_pump(loop, device_path, mqtt_client, topic_room):
+  with serial.Serial(device_path, 9600, timeout=1) as device:
     decoder = aqi.Decoder(device, get_decoder_callback(loop, mqtt_client, topic_room))
     decoder.read_pump()
 
@@ -36,21 +38,54 @@ def get_decoder_callback(loop, client, topic_room):
 
   return callback
 
-async def main(argv):
-  broker_url = DEFAULT_BROKER
-  topic_room = DEFAULT_ROOM
-
+async def bootstrap(args):
   C = MQTTClient()
-  await C.connect(broker_url)
+  await C.connect(args.broker)
 
-  t = threading.Thread(target=run_decoder_pump, args=(asyncio.get_event_loop(), C, topic_room))
+  t = threading.Thread(target=run_decoder_pump, args=(asyncio.get_event_loop(), args.device, C, args.room))
   t.start()
 
-if __name__ == '__main__':
+def main(argv):
+    parser = argparse.ArgumentParser(description='MQTT AQI')
+
+    parser.add_argument('-d', 
+      '--device',
+      dest='device',
+      type=str,
+      help='The device to use')
+    parser.add_argument('-r',
+      '--room',
+      default=DEFAULT_ROOM,
+      dest='room',
+      type=str,
+      help='The room of this sensor')
+    parser.add_argument('-b',
+      '--broker',
+      default=DEFAULT_BROKER,
+      dest='broker',
+      type=str,
+      help='The MQTT Broker URL to use')
+
+    args = parser.parse_args(argv)
+
+    
     formatter = "[%(asctime)s] %(name)s {%(filename)s:%(lineno)d} %(levelname)s - %(message)s"
     logging.basicConfig(level=logging.DEBUG, format=formatter)
+    
+    if not args.device:
+      logging.error('You need to specify a device')
+      parser.print_help()
+      return
 
-    asyncio.get_event_loop().run_until_complete(main([]))
+    if not args.room:
+      logging.error('You need to specify a room')
+      parser.print_help()
+      return
+
+    logging.info('Using broker %s and Room %s' % (args.broker, args.room))
+
+    asyncio.get_event_loop().run_until_complete(bootstrap(args))
     asyncio.get_event_loop().run_forever()
     
-
+if __name__ == '__main__':
+    main(sys.argv[1:])
