@@ -82,6 +82,8 @@ def main(argv):
       parser.print_help()
       return
 
+    logging.info('Using broker %s and Room %s' % (args.broker, args.room))
+
     asyncio.get_event_loop().run_until_complete(bootstrap(args))
     asyncio.get_event_loop().run_forever()
     
