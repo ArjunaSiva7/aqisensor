@@ -29,6 +29,8 @@ PREFIX = bytes([PACKET_HEADER, INSTRUCTION_NUMBER])
 TRAILER = 0xAB
 FRAME_SIZE = 10
 
+UPDATE_INTERVAL_SECONDS=1
+
 
 # https://forum.airnowtech.org/t/the-aqi-equation/169
 TABLE_DESCRIPTIONS = [

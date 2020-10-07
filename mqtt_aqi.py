@@ -1,6 +1,7 @@
 import asyncio
 import argparse
 import logging
+import pandas
 import threading
 import serial
 import sys
@@ -12,6 +13,11 @@ from hbmqtt.mqtt.constants import QOS_1, QOS_2
 
 DEFAULT_BROKER='mqtt://127.0.0.1'
 DEFAULT_ROOM='Default'
+DEFAULT_HISTORY_SECONDS=3600*48
+
+SAMPLES_PER_HOUR = int(3600/aqi.UPDATE_INTERVAL_SECONDS)
+
+aqi_data = None
 
 def run_decoder_pump(loop, device_path, mqtt_client, topic_room):
   with serial.Serial(device_path, 9600, timeout=1) as device:
@@ -24,6 +30,16 @@ def get_decoder_callback(loop, client, topic_room):
     message = desc
     logging.debug('Publishing topic %s: %s', topic, params)
     f = client.publish(topic + '/description', bytes(message,'utf-8'), qos=QOS_2)
+    loop.create_task(f)
+
+    if not aqi_data:
+      aqi_data = pandas.DataFrame(columns=params.keys())
+
+    aqi_data = aqi_data.append(params, ignore_index=True)
+    aqi_data = aqi_data.head(int(UPDATE_INTERVAL_SECONDS/aqi.UPDATE_INTERVAL_SECONDS))
+
+    aqi_grouped = aqi_data['AQI'].groupby(aqi_data.index // SAMPLES_PER_HOUR).sum() // SAMPLES_PER_HOUR
+    f = client.publish(topic + '/' + 'AQI_hourly', bytes(str(aqi_grouped), 'utf-8'), qos=QOS_2)
     loop.create_task(f)
     
     for p in params.keys():
